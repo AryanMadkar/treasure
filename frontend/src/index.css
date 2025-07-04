@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* dynamic background hue shift */
+@keyframes hueShift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+.bg-gradient-animate {
+  background: linear-gradient(-45deg, #1a2a6c, #b21f1f, #fdbb2d, #00d4ff);
+  background-size: 400% 400%;
+  animation: hueShift 20s ease infinite;
+}
+
+/* smooth scrolling */
+html { scroll-behavior: smooth; }
+

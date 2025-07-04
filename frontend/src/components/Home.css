@@ -1,0 +1,49 @@
+/* src/components/Home.css */
+.home-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Canvas covers entire viewport */
+.bg-canvas {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Particles layer */
+.particles {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Your overlay content */
+.home-content {
+  position: relative;
+  z-index: 20;
+  width: 100%;
+  height: 100%;
+  /* center content */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  /* translucent frosted backdrop */
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(8px);
+  text-align: center;
+  color: white;
+}
+
+/* And make sure you still have this in your global css: */
+html { scroll-behavior: smooth; }
