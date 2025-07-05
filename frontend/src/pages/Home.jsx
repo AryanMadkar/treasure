@@ -317,8 +317,8 @@ export default function JewelryPortfolio() {
             </div>
             <Details />
 
-            {/* Jewelry Collections - responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-12 sm:mb-16 lg:mb-20">
+            {/* Jewelry Collections - Mouse-Based 3D Card Effect */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-12 sm:mb-16 lg:mb-20 perspective-1000">
               {[
                 {
                   title: "Bridal Collection",
@@ -326,7 +326,7 @@ export default function JewelryPortfolio() {
                     "Stunning engagement rings and wedding bands crafted for your special day.",
                   icon: FaRing,
                   gradient: "from-yellow-400 to-orange-500",
-                  bgGradient: "from-yellow-400/20 to-orange-500/20",
+                  bgGradient: "from-yellow-400/10 to-orange-500/10",
                 },
                 {
                   title: "Luxury Necklaces",
@@ -334,7 +334,7 @@ export default function JewelryPortfolio() {
                     "Exquisite necklaces that add elegance to any occasion.",
                   icon: FaGem,
                   gradient: "from-slate-400 to-gray-500",
-                  bgGradient: "from-slate-400/20 to-gray-500/20",
+                  bgGradient: "from-slate-400/10 to-gray-500/10",
                 },
                 {
                   title: "Custom Designs",
@@ -342,25 +342,72 @@ export default function JewelryPortfolio() {
                     "Personalized jewelry pieces created exclusively for you.",
                   icon: FaCrown,
                   gradient: "from-pink-400 to-purple-500",
-                  bgGradient: "from-pink-400/20 to-purple-500/20",
+                  bgGradient: "from-pink-400/10 to-purple-500/10",
                 },
               ].map((collection, i) => (
                 <div
                   key={i}
-                  className={`p-4 sm:p-6 lg:p-8 bg-gradient-to-br ${collection.bgGradient} backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-gray-700/50 hover:border-gray-500/50 transition-all duration-500 group hover:scale-105`}
+                  className={`p-4 sm:p-6 lg:p-8 bg-gradient-to-br ${collection.bgGradient} backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-gray-700/30 hover:border-gray-500/50 transition-all duration-150 group transform-gpu hover:scale-105`}
+                  style={{
+                    transformStyle: 'preserve-3d',
+                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
+                    transition: 'transform 0.15s ease-out, box-shadow 0.3s ease-out',
+                  }}
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const centerX = rect.width / 2;
+                    const centerY = rect.height / 2;
+                    
+                    // Calculate rotation based on mouse position
+                    const rotateX = (y - centerY) / centerY * -15; // Max 15 degrees
+                    const rotateY = (x - centerX) / centerX * 15; // Max 15 degrees
+                    
+                    // Calculate shadow offset based on rotation
+                    const shadowX = rotateY * 2;
+                    const shadowY = -rotateX * 2;
+                    
+                    e.currentTarget.style.transform = `
+                      perspective(1000px) 
+                      rotateX(${rotateX}deg) 
+                      rotateY(${rotateY}deg) 
+                      scale(1.05) 
+                      translateZ(50px)
+                    `;
+                    e.currentTarget.style.boxShadow = `
+                      ${shadowX}px ${shadowY + 25}px 50px rgba(0, 0, 0, 0.6),
+                      0 0 30px rgba(255, 255, 255, 0.1)
+                    `;
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transition = 'transform 0.15s ease-out, box-shadow 0.3s ease-out';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1) translateZ(0px)';
+                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
+                    e.currentTarget.style.transition = 'transform 0.5s ease-out, box-shadow 0.5s ease-out';
+                  }}
                 >
                   <div
-                    className={`w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-r ${collection.gradient} flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform duration-300`}
+                    className={`w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-r ${collection.gradient} flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500`}
+                    style={{
+                      boxShadow: '0 10px 20px rgba(0, 0, 0, 0.3)',
+                      transform: 'translateZ(20px)',
+                    }}
                   >
                     <collection.icon className="text-white text-lg sm:text-2xl lg:text-3xl" />
                   </div>
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-4">
+                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 group-hover:text-shadow-lg" 
+                      style={{ transform: 'translateZ(15px)' }}>
                     {collection.title}
                   </h3>
-                  <p className="text-sm sm:text-base text-gray-300 leading-relaxed mb-3 sm:mb-4 lg:mb-6">
+                  <p className="text-sm sm:text-base text-gray-300 leading-relaxed mb-3 sm:mb-4 lg:mb-6 group-hover:text-gray-100"
+                     style={{ transform: 'translateZ(10px)' }}>
                     {collection.description}
                   </p>
-                  <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400 group-hover:text-white transition-colors duration-300">
+                  <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400 group-hover:text-white transition-colors duration-300"
+                       style={{ transform: 'translateZ(5px)' }}>
                     <FaEye />
                     <span>View Collection</span>
                   </div>
