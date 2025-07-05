@@ -13,6 +13,7 @@ import * as THREE from "three";
 
 import Home from "./pages/Home";
 import Abouts from "./pages/Abouts";
+import Details from "./pages/Details";
 
 // Debounce utility
 function debounce(func, wait) {
@@ -155,8 +156,9 @@ export default function App() {
       <AnimatedParticles isMobile={isMobile} />
 
       <div className="relative z-20">
-        <Home />
-        <Abouts/>
+         <Home />
+        <Abouts/> 
+        <Details/>
       </div>
 
       <style jsx global>{`

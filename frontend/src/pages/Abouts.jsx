@@ -608,7 +608,7 @@ function ThreeDCrossCard({ codeCardRef, handleCardHover }) {
   return (
     <div
       ref={codeCardRef}
-      className="relative w-full max-w-md h-64 sm:h-72 bg-gradient-to-br from-gray-900 to-black rounded-2xl border border-gray-800 overflow-hidden cursor-pointer"
+      className="relative w-full max-w-md h-64 sm:h-72 bg-transparent rounded-2xl border-0 overflow-hidden cursor-pointer"
       style={{ transformStyle: "preserve-3d" }}
       onMouseEnter={() => {
         setHovered(true);
@@ -619,7 +619,7 @@ function ThreeDCrossCard({ codeCardRef, handleCardHover }) {
         handleCardHover && handleCardHover(codeCardRef, false);
       }}
     >
-      <div className="hover-glow absolute inset-0 bg-gradient-to-r from-purple-500/20 to-blue-500/20 opacity-0 transition-opacity duration-300"></div>
+      <div className="hover-glow absolute inset-0 bg-transparent opacity-0 transition-opacity duration-300"></div>
 
       {/* Default cross1 image (shown when not hovered) */}
       <div
@@ -782,7 +782,7 @@ function ThreeDImageCard({ imageCardRef, handleImageHover }) {
   return (
     <div
       ref={imageCardRef}
-      className="relative w-full h-80 sm:h-96 bg-gradient-to-br from-gray-900 to-black rounded-2xl overflow-hidden cursor-pointer flex items-center justify-center"
+      className="relative w-full h-80 sm:h-96 bg-transparent rounded-2xl overflow-hidden cursor-pointer flex items-center justify-center"
       onMouseEnter={() => {
         setHovered(true);
         handleImageHover && handleImageHover(true);
