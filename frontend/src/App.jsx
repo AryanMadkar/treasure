@@ -156,9 +156,7 @@ export default function App() {
       <AnimatedParticles isMobile={isMobile} />
 
       <div className="relative z-20">
-         <Home />
-        <Abouts/> 
-        <Details/>
+        <Home />
       </div>
 
       <style jsx global>{`
