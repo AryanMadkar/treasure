@@ -4,7 +4,8 @@ export default {
   theme: {
     extend: {},
   },
-  plugins: [],
+  plugins: [    require('daisyui'),
+],
   corePlugins:{
     preflight: true, // Disable Tailwind's base styles
   }

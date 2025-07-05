@@ -10,20 +10,9 @@ import { EffectComposer } from "@react-three/postprocessing";
 import { Fluid } from "@whatisjery/react-fluid-distortion";
 import { Stars } from "@react-three/drei";
 import * as THREE from "three";
-import Home from "./components/Home";
 
-// Custom hook for device detection
-function useDeviceDetection() {
-  const [isMobile, setIsMobile] = useState(false);
-  useEffect(() => {
-    const checkDevice = () => setIsMobile(window.innerWidth <= 768);
-    checkDevice();
-    const debouncedResize = debounce(checkDevice, 150);
-    window.addEventListener("resize", debouncedResize);
-    return () => window.removeEventListener("resize", debouncedResize);
-  }, []);
-  return { isMobile };
-}
+import Home from "./pages/Home";
+import Abouts from "./pages/Abouts";
 
 // Debounce utility
 function debounce(func, wait) {
@@ -34,46 +23,58 @@ function debounce(func, wait) {
   };
 }
 
-// Enhanced fluid component with smoother, lag-free effect
+// Custom hook for device detection
+function useDeviceDetection() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth <= 768);
+    check();
+    const onResize = debounce(check, 150);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+  return { isMobile };
+}
+
+// Enhanced fluid component
 function EnhancedFluid({ isMobile }) {
   const fluidRef = useRef();
-  const mouseRef = useRef({ x: 0, y: 0 });
-  const targetRef = useRef({ x: 0, y: 0 });
+  const mouse = useRef({ x: 0, y: 0 });
+  const target = useRef({ x: 0, y: 0 });
 
-  const handleMouseMove = useCallback((event) => {
-    targetRef.current.x = (event.clientX / window.innerWidth) * 2 - 1;
-    targetRef.current.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  const onMouseMove = useCallback((e) => {
+    target.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+    target.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
   }, []);
 
   useEffect(() => {
-    window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [handleMouseMove]);
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    return () => window.removeEventListener("mousemove", onMouseMove);
+  }, [onMouseMove]);
 
   useFrame(() => {
-    // Always interpolate each frame for silky smooth movement
-    const lerp = isMobile ? 0.12 : 0.16;
-    mouseRef.current.x += (targetRef.current.x - mouseRef.current.x) * lerp;
-    mouseRef.current.y += (targetRef.current.y - mouseRef.current.y) * lerp;
+    const lerpVal = isMobile ? 0.12 : 0.16;
+    mouse.current.x += (target.current.x - mouse.current.x) * lerpVal;
+    mouse.current.y += (target.current.y - mouse.current.y) * lerpVal;
   });
 
-  const fluidSettings = useMemo(
+  const settings = useMemo(
     () => ({
       rainbow: true,
       intensity: isMobile ? 7 : 10,
       force: isMobile ? 1.5 : 2.5,
       radius: isMobile ? 0.3 : 0.5,
-      resolution: isMobile ? 0.5 : 1.0, // lower res on mobile
+      resolution: isMobile ? 0.5 : 1.0,
       autoAnimate: true,
-      mousePosition: mouseRef.current,
+      mousePosition: mouse.current,
     }),
     [isMobile]
   );
 
-  return <Fluid ref={fluidRef} {...fluidSettings} />;
+  return <Fluid ref={fluidRef} {...settings} />;
 }
 
-// Floating particles
+// Floating particles layer
 function AnimatedParticles({ isMobile }) {
   const particles = useMemo(() => {
     const count = isMobile ? 20 : 50;
@@ -89,11 +90,11 @@ function AnimatedParticles({ isMobile }) {
   }, [isMobile]);
 
   return (
-    <div className="fixed inset-0 z-5 pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 z-10 pointer-events-none overflow-hidden">
       {particles.map((p) => (
         <div
           key={p.id}
-          className="absolute rounded-full animate-pulse"
+          className="absolute rounded-full"
           style={{
             left: `${p.x}%`,
             top: `${p.y}%`,
@@ -111,7 +112,7 @@ function AnimatedParticles({ isMobile }) {
   );
 }
 
-const OptimizedStars = React.memo(({ isMobile }) =>
+const StarsLayer = React.memo(({ isMobile }) =>
   isMobile ? null : (
     <Stars
       radius={100}
@@ -125,11 +126,10 @@ const OptimizedStars = React.memo(({ isMobile }) =>
   )
 );
 
-// Main App
 export default function App() {
   const { isMobile } = useDeviceDetection();
 
-  const canvasSettings = useMemo(
+  const canvasProps = useMemo(
     () => ({
       camera: { position: [0, 0, 5], fov: 75 },
       gl: {
@@ -138,50 +138,36 @@ export default function App() {
         antialias: !isMobile,
         powerPreference: "high-performance",
       },
-      style: {
-        width: "100vw",
-        height: "100vh",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        zIndex: 0,
-      },
+      style: { position: "fixed", inset: 0, zIndex: 0 },
     }),
     [isMobile]
   );
 
   return (
-    <div className="relative w-screen h-screen overflow-hidden">
-      {/* Background Canvas with fluid animation */}
-      <Canvas
-        className="fixed top-0 left-0 w-full h-full z-0"
-        {...canvasSettings}
-      >
-        <OptimizedStars isMobile={isMobile} />
+    <div className="relative w-[98vw] h-screen ">
+      <Canvas {...canvasProps}>
+        <StarsLayer isMobile={isMobile} />
         <EffectComposer>
           <EnhancedFluid isMobile={isMobile} />
         </EffectComposer>
       </Canvas>
-      
-      {/* Animated Particles Layer */}
-      <AnimatedParticles isMobile={isMobile} />
-      
-      {/* Home Component Layer */}
-      <Home />
 
-      <style jsx>{`
+      <AnimatedParticles isMobile={isMobile} />
+
+      <div className="relative z-20">
+        <Home />
+        <Abouts/>
+      </div>
+
+      <style jsx global>{`
         @keyframes float {
           0%,
           100% {
-            transform: translateY(0px);
+            transform: translateY(0);
           }
           50% {
             transform: translateY(-20px);
           }
-        }
-        
-        .bg-gradient-to-br {
-          background: linear-gradient(to bottom right, #000000, #1a1a2e, #4a148c);
         }
       `}</style>
     </div>
