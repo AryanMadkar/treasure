@@ -14,6 +14,8 @@ import * as THREE from "three";
 import Home from "./pages/Home";
 import Abouts from "./pages/Abouts";
 import Details from "./pages/Details";
+import Collections from "./pages/Collections";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Debounce utility
 function debounce(func, wait) {
@@ -156,7 +158,12 @@ export default function App() {
       <AnimatedParticles isMobile={isMobile} />
 
       <div className="relative z-20">
-        <Home />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/collection" element={<Collections />} />
+          </Routes>
+        </BrowserRouter>
       </div>
 
       <style jsx global>{`
