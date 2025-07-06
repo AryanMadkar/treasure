@@ -1,20 +1,107 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 
 const Loader = ({ onLoadComplete }) => {
-  const [phase, setPhase] = useState('startup'); // startup, video1, video2, shutdown, complete
+  const [phase, setPhase] = useState('preload'); // preload, startup, video1, transition, video2, shutdown, complete
   const [glitchIntensity, setGlitchIntensity] = useState(0);
   const [scanlines, setScanlines] = useState(true);
   const [cameraZoom, setCameraZoom] = useState(1);
   const [tvPower, setTvPower] = useState(false);
   const [staticNoise, setStaticNoise] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [videosLoaded, setVideosLoaded] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
   
   const video1Ref = useRef(null);
   const video2Ref = useRef(null);
+  const timelineRef = useRef(null);
 
+  // Video URLs
+  const videoUrls = [
+    "https://res.cloudinary.com/dteqlumrz/video/upload/v1751708583/fantasy1_c79h0u.mp4",
+    "https://res.cloudinary.com/dteqlumrz/video/upload/v1751708569/cynamatic1_xm1gup.mp4"
+  ];
+
+  // Preload videos
+  const preloadVideo = useCallback((url) => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'auto';
+      video.muted = true;
+      video.playsInline = true;
+      
+      const onCanPlay = () => {
+        video.removeEventListener('canplaythrough', onCanPlay);
+        video.removeEventListener('error', onError);
+        resolve(video);
+      };
+      
+      const onError = () => {
+        video.removeEventListener('canplaythrough', onCanPlay);
+        video.removeEventListener('error', onError);
+        reject(new Error(`Failed to load video: ${url}`));
+      };
+      
+      video.addEventListener('canplaythrough', onCanPlay);
+      video.addEventListener('error', onError);
+      video.src = url;
+      video.load();
+    });
+  });
+
+  // Preload all videos
   useEffect(() => {
-    const timeline = async () => {
+    let mounted = true;
+    
+    const loadVideos = async () => {
+      try {
+        const promises = videoUrls.map(url => preloadVideo(url));
+        
+        // Track progress
+        let completed = 0;
+        promises.forEach(promise => {
+          promise.then(() => {
+            if (mounted) {
+              completed++;
+              setVideosLoaded(completed);
+              setLoadingProgress((completed / videoUrls.length) * 100);
+            }
+          });
+        });
+        
+        await Promise.all(promises);
+        
+        if (mounted) {
+          // Start the main timeline after videos are loaded
+          setTimeout(() => {
+            startTimeline();
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error preloading videos:', error);
+        if (mounted) {
+          // Continue anyway after a delay
+          setTimeout(() => {
+            startTimeline();
+          }, 1000);
+        }
+      }
+    };
+    
+    loadVideos();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Main timeline
+  const startTimeline = useCallback(() => {
+    let startTime = Date.now();
+    
+    const timeline = () => {
       // TV Startup sequence (0.5s)
       setTimeout(() => {
+        setPhase('startup');
         setTvPower(true);
         setStaticNoise(false);
         setGlitchIntensity(0.8);
@@ -25,7 +112,8 @@ const Loader = ({ onLoadComplete }) => {
         setPhase('video1');
         setGlitchIntensity(0.3);
         if (video1Ref.current) {
-          video1Ref.current.play();
+          video1Ref.current.currentTime = 0;
+          video1Ref.current.play().catch(console.error);
         }
       }, 500);
 
@@ -40,7 +128,8 @@ const Loader = ({ onLoadComplete }) => {
         setPhase('video2');
         setGlitchIntensity(0.2);
         if (video2Ref.current) {
-          video2Ref.current.play();
+          video2Ref.current.currentTime = 0;
+          video2Ref.current.play().catch(console.error);
         }
       }, 3000);
 
@@ -65,12 +154,46 @@ const Loader = ({ onLoadComplete }) => {
       // Fade out and complete
       setTimeout(() => {
         setPhase('complete');
-        onLoadComplete();
+        onLoadComplete?.();
       }, 5000);
     };
 
     timeline();
+    
+    // Progress timer
+    const progressTimer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min((elapsed / 5000) * 100, 100);
+      setCurrentTime(elapsed);
+      
+      if (elapsed >= 5000) {
+        clearInterval(progressTimer);
+      }
+    }, 50);
+
+    timelineRef.current = progressTimer;
   }, [onLoadComplete]);
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (timelineRef.current) {
+        clearInterval(timelineRef.current);
+      }
+    };
+  }, []);
+
+  // Generate random glitch values
+  const glitchStyle = {
+    background: `linear-gradient(90deg, 
+      transparent ${Math.random() * 100}%, 
+      rgba(255,0,255,${glitchIntensity * 0.3}) ${Math.random() * 100}%, 
+      transparent ${Math.random() * 100}%,
+      rgba(0,255,255,${glitchIntensity * 0.2}) ${Math.random() * 100}%,
+      transparent ${Math.random() * 100}%)`,
+    animation: `glitch ${0.1 + Math.random() * 0.1}s infinite`,
+    mixBlendMode: 'screen'
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black overflow-hidden">
@@ -97,7 +220,7 @@ const Loader = ({ onLoadComplete }) => {
       >
         {/* TV Bezel */}
         <div 
-          className={`relative bg-gray-900 rounded-3xl p-8 shadow-2xl border-4 border-gray-700 ${
+          className={`relative rounded-3xl p-8 shadow-2xl border-4 border-gray-700 transition-all duration-300 ${
             tvPower ? 'shadow-blue-500/20' : 'shadow-black/50'
           }`}
           style={{
@@ -130,11 +253,12 @@ const Loader = ({ onLoadComplete }) => {
                   }`}
                   muted
                   playsInline
+                  preload="auto"
                   style={{
                     filter: `contrast(1.2) saturate(1.1) ${glitchIntensity > 0.5 ? 'hue-rotate(90deg)' : ''}`
                   }}
                 >
-                  <source src="https://res.cloudinary.com/dteqlumrz/video/upload/v1751708583/fantasy1_c79h0u.mp4" type="video/mp4" />
+                  <source src={videoUrls[0]} type="video/mp4" />
                 </video>
               )}
 
@@ -147,18 +271,35 @@ const Loader = ({ onLoadComplete }) => {
                   }`}
                   muted
                   playsInline
+                  preload="auto"
                   style={{
                     filter: `contrast(1.3) saturate(1.2) ${phase === 'shutdown' ? 'brightness(0.3)' : ''}`
                   }}
                 >
-                  <source src="https://res.cloudinary.com/dteqlumrz/video/upload/v1751708569/cynamatic1_xm1gup.mp4" type="video/mp4" />
+                  <source src={videoUrls[1]} type="video/mp4" />
                 </video>
               )}
 
               {/* Startup flash */}
               {phase === 'startup' && (
-                <div className="absolute inset-0 bg-white animate-pulse" 
-                     style={{ animation: 'startupFlash 0.5s ease-out' }} />
+                <div 
+                  className="absolute inset-0 bg-white" 
+                  style={{ 
+                    animation: 'startupFlash 0.5s ease-out' 
+                  }} 
+                />
+              )}
+
+              {/* Preload indicator */}
+              {phase === 'preload' && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-blue-400 font-mono text-sm">
+                      LOADING MEDIA... {Math.round(loadingProgress)}%
+                    </p>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -166,23 +307,14 @@ const Loader = ({ onLoadComplete }) => {
             {glitchIntensity > 0 && (
               <div 
                 className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `linear-gradient(90deg, 
-                    transparent ${Math.random() * 100}%, 
-                    rgba(255,0,255,${glitchIntensity * 0.3}) ${Math.random() * 100}%, 
-                    transparent ${Math.random() * 100}%,
-                    rgba(0,255,255,${glitchIntensity * 0.2}) ${Math.random() * 100}%,
-                    transparent ${Math.random() * 100}%)`,
-                  animation: `glitch ${0.1 + Math.random() * 0.1}s infinite`,
-                  mixBlendMode: 'screen'
-                }}
+                style={glitchStyle}
               />
             )}
 
             {/* Digital noise bars */}
             {glitchIntensity > 0.5 && (
               <div className="absolute inset-0 pointer-events-none">
-                {[...Array(8)].map((_, i) => (
+                {Array.from({ length: 8 }, (_, i) => (
                   <div
                     key={i}
                     className="absolute bg-white opacity-20"
@@ -218,7 +350,7 @@ const Loader = ({ onLoadComplete }) => {
             {/* TV shutdown effect */}
             {phase === 'shutdown' && (
               <div 
-                className="absolute inset-0 bg-white"
+                className="absolute inset-0"
                 style={{
                   background: 'radial-gradient(circle, transparent 0%, black 100%)',
                   animation: 'tvShutdown 0.5s ease-in forwards'
@@ -228,8 +360,8 @@ const Loader = ({ onLoadComplete }) => {
 
             {/* Power indicator */}
             <div 
-              className={`absolute bottom-4 right-4 w-3 h-3 rounded-full ${
-                tvPower ? 'bg-green-400 shadow-green-400/50' : 'bg-red-600'
+              className={`absolute bottom-4 right-4 w-3 h-3 rounded-full transition-all duration-300 ${
+                tvPower ? 'bg-green-400' : 'bg-red-600'
               }`}
               style={{
                 boxShadow: tvPower ? '0 0 10px rgba(74, 222, 128, 0.8)' : 'none'
@@ -251,13 +383,15 @@ const Loader = ({ onLoadComplete }) => {
             <div 
               className="h-full bg-gradient-to-r from-blue-500 to-purple-500 rounded-full transition-all duration-100"
               style={{
-                width: `${((Date.now() % 5000) / 5000) * 100}%`,
-                animation: 'progressBar 5s linear forwards'
+                width: phase === 'preload' 
+                  ? `${loadingProgress}%` 
+                  : `${Math.min((currentTime / 5000) * 100, 100)}%`
               }}
             />
           </div>
         </div>
         <p className="text-gray-400 text-sm font-mono tracking-wider">
+          {phase === 'preload' && `PRELOADING MEDIA... ${videosLoaded}/${videoUrls.length}`}
           {phase === 'startup' && 'INITIALIZING...'}
           {phase === 'video1' && 'LOADING SEQUENCE A...'}
           {phase === 'transition' && 'SWITCHING FEED...'}
@@ -313,11 +447,6 @@ const Loader = ({ onLoadComplete }) => {
         @keyframes staticNoise {
           0% { opacity: 0.4; }
           100% { opacity: 0.6; }
-        }
-        
-        @keyframes progressBar {
-          0% { width: 0%; }
-          100% { width: 100%; }
         }
       `}</style>
     </div>

@@ -12,7 +12,11 @@ const Abouts = () => {
   const statsRef = useRef(null);
   const approachRef = useRef(null);
   const [gsapLoaded, setGsapLoaded] = useState(false);
-
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [preloadedModels, setPreloadedModels] = useState({
+    cross: null,
+    bat: null,
+  });
   useEffect(() => {
     const loadGSAP = async () => {
       if (window.gsap && window.ScrollTrigger) {
@@ -64,6 +68,49 @@ const Abouts = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const preloadModels = async () => {
+      if (!gsapLoaded) return;
+
+      try {
+        const THREE = await import("three");
+        const { GLTFLoader } = await import(
+          "three/examples/jsm/loaders/GLTFLoader.js"
+        );
+
+        const loader = new GLTFLoader();
+        const loadedModels = {};
+
+        // Preload both models
+        const crossPromise = new Promise((resolve, reject) => {
+          loader.load("/crossshade.glb", resolve, undefined, reject);
+        });
+
+        const batPromise = new Promise((resolve, reject) => {
+          loader.load("/base_basic_shaded.glb", resolve, undefined, reject);
+        });
+
+        // Wait for both models to load
+        const [crossGltf, batGltf] = await Promise.all([
+          crossPromise,
+          batPromise,
+        ]);
+
+        loadedModels.cross = crossGltf.scene.clone();
+        loadedModels.bat = batGltf.scene.clone();
+
+        setPreloadedModels(loadedModels);
+        setModelsLoaded(true);
+
+        console.log("3D models preloaded successfully");
+      } catch (error) {
+        console.error("Failed to preload 3D models:", error);
+      }
+    };
+
+    preloadModels();
+  }, [gsapLoaded]);
 
   const initAnimations = () => {
     if (!window.gsap || !window.ScrollTrigger || !containerRef.current) {
@@ -406,9 +453,11 @@ const Abouts = () => {
                 3D Card Hover Effect
               </h3>
               <div className="perspective-1000">
-                <ThreeDCrossCard 
+                <ThreeDCrossCard
                   codeCardRef={codeCardRef}
                   handleCardHover={handleCardHover}
+                  modelsLoaded={modelsLoaded}
+                  preloadedModels={preloadedModels}
                 />
               </div>
             </div>
@@ -422,6 +471,8 @@ const Abouts = () => {
               <ThreeDImageCard
                 imageCardRef={imageCardRef}
                 handleImageHover={handleImageHover}
+                modelsLoaded={modelsLoaded}
+                preloadedModels={preloadedModels}
               />
             </div>
 
@@ -469,7 +520,7 @@ const Abouts = () => {
 };
 
 // New 3D Cross Card Component
-function ThreeDCrossCard({ codeCardRef, handleCardHover }) {
+function ThreeDCrossCard({ codeCardRef, handleCardHover, modelsLoaded, preloadedModels }) {
   const [hovered, setHovered] = useState(false);
   const canvasRef = useRef(null);
   const threeRef = useRef({

@@ -12,7 +12,7 @@ import {
 import Abouts from "./Abouts";
 import Details from "./Details";
 import { Link } from "react-router-dom";
-
+import ScrollImageComponent from "../components/ScrollImageComponent";
 export default function JewelryPortfolio() {
   const containerRef = useRef();
   const leftPanelRef = useRef();
@@ -349,9 +349,10 @@ export default function JewelryPortfolio() {
                   key={i}
                   className={`p-4 sm:p-6 lg:p-8 bg-gradient-to-br ${collection.bgGradient} backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-gray-700/30 hover:border-gray-500/50 transition-all duration-150 group transform-gpu hover:scale-105`}
                   style={{
-                    transformStyle: 'preserve-3d',
-                    boxShadow: '0 20px 40px rgba(0, 0, 0, 0.3)',
-                    transition: 'transform 0.15s ease-out, box-shadow 0.3s ease-out',
+                    transformStyle: "preserve-3d",
+                    boxShadow: "0 20px 40px rgba(0, 0, 0, 0.3)",
+                    transition:
+                      "transform 0.15s ease-out, box-shadow 0.3s ease-out",
                   }}
                   onMouseMove={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect();
@@ -359,15 +360,15 @@ export default function JewelryPortfolio() {
                     const y = e.clientY - rect.top;
                     const centerX = rect.width / 2;
                     const centerY = rect.height / 2;
-                    
+
                     // Calculate rotation based on mouse position
-                    const rotateX = (y - centerY) / centerY * -15; // Max 15 degrees
-                    const rotateY = (x - centerX) / centerX * 15; // Max 15 degrees
-                    
+                    const rotateX = ((y - centerY) / centerY) * -15; // Max 15 degrees
+                    const rotateY = ((x - centerX) / centerX) * 15; // Max 15 degrees
+
                     // Calculate shadow offset based on rotation
                     const shadowX = rotateY * 2;
                     const shadowY = -rotateX * 2;
-                    
+
                     e.currentTarget.style.transform = `
                       perspective(1000px) 
                       rotateX(${rotateX}deg) 
@@ -381,33 +382,43 @@ export default function JewelryPortfolio() {
                     `;
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.transition = 'transform 0.15s ease-out, box-shadow 0.3s ease-out';
+                    e.currentTarget.style.transition =
+                      "transform 0.15s ease-out, box-shadow 0.3s ease-out";
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1) translateZ(0px)';
-                    e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.3)';
-                    e.currentTarget.style.transition = 'transform 0.5s ease-out, box-shadow 0.5s ease-out';
+                    e.currentTarget.style.transform =
+                      "perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1) translateZ(0px)";
+                    e.currentTarget.style.boxShadow =
+                      "0 20px 40px rgba(0, 0, 0, 0.3)";
+                    e.currentTarget.style.transition =
+                      "transform 0.5s ease-out, box-shadow 0.5s ease-out";
                   }}
                 >
                   <div
                     className={`w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-r ${collection.gradient} flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-500`}
                     style={{
-                      boxShadow: '0 10px 20px rgba(0, 0, 0, 0.3)',
-                      transform: 'translateZ(20px)',
+                      boxShadow: "0 10px 20px rgba(0, 0, 0, 0.3)",
+                      transform: "translateZ(20px)",
                     }}
                   >
                     <collection.icon className="text-white text-lg sm:text-2xl lg:text-3xl" />
                   </div>
-                  <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 group-hover:text-shadow-lg" 
-                      style={{ transform: 'translateZ(15px)' }}>
+                  <h3
+                    className="text-lg sm:text-xl lg:text-2xl font-bold text-white mb-2 sm:mb-3 lg:mb-4 group-hover:text-shadow-lg"
+                    style={{ transform: "translateZ(15px)" }}
+                  >
                     {collection.title}
                   </h3>
-                  <p className="text-sm sm:text-base text-gray-300 leading-relaxed mb-3 sm:mb-4 lg:mb-6 group-hover:text-gray-100"
-                     style={{ transform: 'translateZ(10px)' }}>
+                  <p
+                    className="text-sm sm:text-base text-gray-300 leading-relaxed mb-3 sm:mb-4 lg:mb-6 group-hover:text-gray-100"
+                    style={{ transform: "translateZ(10px)" }}
+                  >
                     {collection.description}
                   </p>
-                  <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400 group-hover:text-white transition-colors duration-300"
-                       style={{ transform: 'translateZ(5px)' }}>
+                  <div
+                    className="flex items-center space-x-2 text-xs sm:text-sm text-gray-400 group-hover:text-white transition-colors duration-300"
+                    style={{ transform: "translateZ(5px)" }}
+                  >
                     <FaEye />
                     <span>View Collection</span>
                   </div>
@@ -429,6 +440,7 @@ export default function JewelryPortfolio() {
               </p>
             </div>
           </div>
+          <ScrollImageComponent/>
 
           {/* Luxury Footer */}
           <div className="border-t border-gradient-to-r from-yellow-400/20 to-slate-400/20 py-8 sm:py-10 lg:py-12">
