@@ -17,10 +17,8 @@ import Collections from "./pages/Collections"; // Import your Collections page
 // import Home from "./pages/Home";
 // import Abouts from "./pages/Abouts";
 // import Details from "./pages/Details";
-// import Collections from "./pages/Collections";
 import Loader from "./components/Loader"; // Import the Loader component
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-// import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Debounce utility
 function debounce(func, wait) {
@@ -160,11 +158,11 @@ export default function App() {
     <div className="relative w-[98vw] h-screen">
       {/* Show loader while loading */}
       {isLoading && <Loader onLoadComplete={handleLoadComplete} />}
-      
+
       {/* Main app content - hidden while loading */}
-      <div 
+      <div
         className={`transition-opacity duration-1000 ${
-          isLoading ? 'opacity-0' : 'opacity-100'
+          isLoading ? "opacity-0" : "opacity-100"
         }`}
       >
         <Canvas {...canvasProps}>
@@ -178,20 +176,19 @@ export default function App() {
 
         <div className="relative z-20">
           {/* Uncomment and replace with your router setup */}
-          
+
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Home />} />
-              {/* <Route path="/abouts" element={<Abouts />} />
-              <Route path="/details" element={<Details />} /> */}
               <Route path="/collection" element={<Collections />} />
             </Routes>
           </BrowserRouter>
-         
-          
+
           {/* Temporary content - remove when you add router */}
           <div className="text-white text-center pt-20">
-            <h1 className="text-4xl font-bold mb-4">Welcome to Your Epic App</h1>
+            <h1 className="text-4xl font-bold mb-4">
+              Welcome to Your Epic App
+            </h1>
             <p className="text-lg opacity-80">Retro TV loading complete! 🔥</p>
           </div>
         </div>

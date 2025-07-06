@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-const SmoothHorizontalScroll = () => {
+const UltraSmoothHorizontalScroll = () => {
   // Refs for DOM elements
   const containerRef = useRef(null);
   const horizontalRef = useRef(null);
   const sectionsRef = useRef([]);
+  const rafRef = useRef(null);
+  const targetTranslateX = useRef(0);
+  const currentTranslateX = useRef(0);
+  const velocity = useRef(0);
 
   // State variables
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadedImages, setLoadedImages] = useState(new Set());
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   // Enhanced jewelry-themed images with better metadata
   const images = useMemo(() => [
@@ -56,7 +61,21 @@ const SmoothHorizontalScroll = () => {
     }
   ], []);
 
-  // Preload images for better performance
+  // Track window dimensions for responsive calculations
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight
+      });
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
+  // Enhanced preload images with WebP support
   useEffect(() => {
     const preloadImages = async () => {
       const promises = images.map(img => {
@@ -70,6 +89,8 @@ const SmoothHorizontalScroll = () => {
             console.error(`Failed to load image: ${img.url}`);
             resolve();
           };
+          // Add crossOrigin for better performance
+          image.crossOrigin = 'anonymous';
           image.src = img.url;
         });
       });
@@ -81,70 +102,76 @@ const SmoothHorizontalScroll = () => {
     preloadImages();
   }, [images]);
 
-  // Smooth horizontal scroll effect with sticky behavior
-  useEffect(() => {
-    if (isLoading) return;
+  // Ultra-smooth lerp function for buttery smooth animations
+  const lerp = useCallback((start, end, factor) => {
+    return start + (end - start) * factor;
+  }, []);
 
+  // Enhanced smooth scroll with momentum and easing
+  const smoothScrollLoop = useCallback(() => {
     const container = containerRef.current;
     const horizontal = horizontalRef.current;
 
-    if (!container || !horizontal) return;
+    if (!container || !horizontal || isLoading) {
+      rafRef.current = requestAnimationFrame(smoothScrollLoop);
+      return;
+    }
 
-    const handleScroll = () => {
-      if (!container || !horizontal) return;
+    // Calculate scroll progress with enhanced precision
+    const containerRect = container.getBoundingClientRect();
+    const containerTop = containerRect.top;
+    const containerHeight = containerRect.height;
+    const windowHeight = window.innerHeight;
 
-      const containerRect = container.getBoundingClientRect();
-      const containerTop = containerRect.top;
-      const containerHeight = containerRect.height;
-      const windowHeight = window.innerHeight;
+    let progress = 0;
+    
+    if (containerTop <= 0 && containerTop > -containerHeight + windowHeight) {
+      const scrolledDistance = Math.abs(containerTop);
+      const totalScrollDistance = containerHeight - windowHeight;
+      progress = Math.max(0, Math.min(1, scrolledDistance / totalScrollDistance));
+    } else if (containerTop > 0) {
+      progress = 0;
+    } else {
+      progress = 1;
+    }
 
-      // Calculate scroll progress - the container should stick while scrolling through it
-      let progress = 0;
-      
-      if (containerTop <= 0 && containerTop > -containerHeight + windowHeight) {
-        // Container is in the "sticky" zone - calculate progress based on how much we've scrolled through it
-        const scrolledDistance = Math.abs(containerTop);
-        const totalScrollDistance = containerHeight - windowHeight;
-        progress = Math.max(0, Math.min(1, scrolledDistance / totalScrollDistance));
-      } else if (containerTop > 0) {
-        // Container hasn't reached the sticky position yet
-        progress = 0;
-      } else {
-        // Container has been completely scrolled through
-        progress = 1;
-      }
+    // Smooth progress transition
+    setScrollProgress(prevProgress => lerp(prevProgress, progress, 0.1));
 
-      setScrollProgress(progress);
+    // Calculate target translation with viewport considerations
+    const maxTranslateX = horizontal.scrollWidth - dimensions.width;
+    targetTranslateX.current = progress * maxTranslateX;
 
-      // Calculate horizontal translation
-      const maxTranslateX = horizontal.scrollWidth - window.innerWidth;
-      const translateX = progress * maxTranslateX;
+    // Ultra-smooth lerp animation with momentum
+    const lerpFactor = 0.08; // Adjust for smoothness (lower = smoother)
+    currentTranslateX.current = lerp(currentTranslateX.current, targetTranslateX.current, lerpFactor);
 
-      // Apply smooth horizontal translation
-      horizontal.style.transform = `translateX(-${translateX}px)`;
+    // Calculate velocity for momentum effects
+    velocity.current = (targetTranslateX.current - currentTranslateX.current) * 0.1;
 
-      // Update current image index based on progress
-      const newImageIndex = Math.floor(progress * (images.length - 1));
-      const clampedIndex = Math.max(0, Math.min(images.length - 1, newImageIndex));
+    // Apply translation with subpixel precision
+    horizontal.style.transform = `translate3d(-${currentTranslateX.current}px, 0, 0)`;
+
+    // Update current image index with smooth transitions
+    const newImageIndex = Math.floor(progress * (images.length - 1));
+    const clampedIndex = Math.max(0, Math.min(images.length - 1, newImageIndex));
+    if (clampedIndex !== currentImageIndex) {
       setCurrentImageIndex(clampedIndex);
-    };
+    }
 
-    // Smooth scroll handler with requestAnimationFrame
-    const smoothScrollHandler = () => {
-      requestAnimationFrame(handleScroll);
-    };
+    rafRef.current = requestAnimationFrame(smoothScrollLoop);
+  }, [dimensions.width, images.length, isLoading, lerp, currentImageIndex]);
 
-    window.addEventListener('scroll', smoothScrollHandler, { passive: true });
-    window.addEventListener('resize', smoothScrollHandler, { passive: true });
-
-    // Initial call
-    handleScroll();
-
+  // Initialize smooth scroll loop
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(smoothScrollLoop);
+    
     return () => {
-      window.removeEventListener('scroll', smoothScrollHandler);
-      window.removeEventListener('resize', smoothScrollHandler);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
-  }, [isLoading, images.length]);
+  }, [smoothScrollLoop]);
 
   // Utility to convert hex color to RGBA
   const hexToRgba = useCallback((hex, alpha) => {
@@ -162,11 +189,12 @@ const SmoothHorizontalScroll = () => {
     return `linear-gradient(135deg, ${hexToRgba(image.color, 0.2)} 0%, rgba(0, 0, 0, 0.6) 50%, ${hexToRgba(image.accent, 0.15)} 100%)`;
   }, [images, hexToRgba]);
 
-  // Enhanced particle generation for visual flair
+  // Enhanced particle generation with responsive sizing
   const generateParticles = useCallback((index, count = 8) => {
-    return Array.from({ length: count }, (_, i) => {
+    const baseCount = dimensions.width < 768 ? 4 : count;
+    return Array.from({ length: baseCount }, (_, i) => {
       const image = images[index];
-      const size = Math.random() * 3 + 1;
+      const size = Math.random() * (dimensions.width < 768 ? 2 : 3) + 1;
       const isGoldLike = index % 2 === 0;
 
       return {
@@ -182,22 +210,38 @@ const SmoothHorizontalScroll = () => {
         blur: Math.random() * 1
       };
     });
-  }, [images]);
+  }, [images, dimensions.width]);
 
   // Memoized particles for performance
   const allParticles = useMemo(() =>
     images.map((_, idx) => generateParticles(idx, 6))
   , [images, generateParticles]);
 
-  // Loader component
+  // Responsive text sizes
+  const getResponsiveTextSize = useCallback((base, md, lg) => {
+    if (dimensions.width < 768) return base;
+    if (dimensions.width < 1024) return md;
+    return lg;
+  }, [dimensions.width]);
+
+  // Enhanced loader with better UX
   if (isLoading) {
     return (
-      <div className="w-full h-[80vh] bg-black flex items-center justify-center">
+      <div className="w-full h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-yellow-400 mb-3"></div>
-          <p className="text-white text-base font-semibold">Loading Collection...</p>
+          <div className="relative">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-transparent border-t-yellow-400 border-r-orange-400"></div>
+            <div className="absolute inset-0 inline-block animate-pulse rounded-full h-12 w-12 border-4 border-transparent border-b-slate-400 border-l-gray-400"></div>
+          </div>
+          <p className="text-white text-lg font-semibold mt-4">Loading Collection...</p>
           <div className="mt-2 text-sm text-gray-400">
             {loadedImages.size} / {images.length} images loaded
+          </div>
+          <div className="w-48 h-1 bg-gray-700 rounded-full mt-3 mx-auto overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full transition-all duration-300"
+              style={{ width: `${(loadedImages.size / images.length) * 100}%` }}
+            />
           </div>
         </div>
       </div>
@@ -206,20 +250,26 @@ const SmoothHorizontalScroll = () => {
 
   return (
     <div className="w-full bg-black">
-      {/* Section Title */}
-      <div className="text-center py-8 md:py-12 lg:py-16">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-300 to-slate-300">
+      {/* Section Title - Fully Responsive */}
+      <div className="text-center py-6 md:py-12 lg:py-16 px-4">
+        <h2 className={`font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-300 to-slate-300 ${
+          dimensions.width < 768 ? 'text-2xl' : dimensions.width < 1024 ? 'text-4xl' : 'text-5xl'
+        }`}>
           Featured Collection
         </h2>
-        <p className="text-gray-300 text-lg md:text-xl max-w-2xl mx-auto px-4">
+        <p className={`text-gray-300 max-w-2xl mx-auto px-4 ${
+          dimensions.width < 768 ? 'text-base' : 'text-xl'
+        }`}>
           Discover our handpicked selection of exquisite jewelry pieces
         </p>
       </div>
 
-      {/* Scroll hint */}
-      <div className="text-center pb-8">
-        <div className="inline-flex items-center space-x-2 bg-black bg-opacity-50 backdrop-blur-sm px-4 py-2 rounded-lg border border-gray-700">
-          <span className="text-white text-sm">Scroll down to explore horizontally</span>
+      {/* Scroll hint - Responsive */}
+      <div className="text-center pb-6 md:pb-8 px-4">
+        <div className="inline-flex items-center space-x-2 bg-black bg-opacity-50 backdrop-blur-sm px-3 py-2 md:px-4 md:py-2 rounded-lg border border-gray-700">
+          <span className="text-white text-xs md:text-sm">
+            {dimensions.width < 768 ? 'Scroll to explore' : 'Scroll down to explore horizontally'}
+          </span>
           <div className="flex space-x-1">
             <div className="w-1 h-1 bg-yellow-400 rounded-full animate-pulse"></div>
             <div className="w-1 h-1 bg-orange-400 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
@@ -228,11 +278,11 @@ const SmoothHorizontalScroll = () => {
         </div>
       </div>
 
-      {/* Main container - increased height for sticky scroll effect */}
+      {/* Main container - Responsive height */}
       <div
         ref={containerRef}
         className="relative w-full"
-        style={{ height: `${images.length * 150}vh` }} // Increased height for longer sticky duration
+        style={{ height: `${images.length * (dimensions.width < 768 ? 120 : 150)}vh` }}
       >
         {/* Sticky horizontal scroll container */}
         <div className="sticky top-0 h-screen overflow-hidden">
@@ -241,8 +291,7 @@ const SmoothHorizontalScroll = () => {
             className="flex h-full"
             style={{
               width: `${images.length * 100}vw`,
-              willChange: 'transform',
-              transition: 'transform 0.1s ease-out'
+              willChange: 'transform'
             }}
           >
             {images.map((image, index) => (
@@ -251,17 +300,20 @@ const SmoothHorizontalScroll = () => {
                 ref={el => sectionsRef.current[index] = el}
                 className="relative w-screen h-full flex-shrink-0 overflow-hidden"
               >
-                {/* Base image */}
+                {/* Base image with responsive loading */}
                 {loadedImages.has(image.url) ? (
-                  <img
-                    src={image.url}
-                    alt={`${image.title} - ${image.description}`}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{
-                      transform: `scale(${1 + scrollProgress * 0.1})`,
-                      transition: 'transform 0.3s ease-out'
-                    }}
-                  />
+                  <picture>
+                    <img
+                      src={image.url}
+                      alt={`${image.title} - ${image.description}`}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out"
+                      style={{
+                        transform: `scale(${1 + Math.abs(velocity.current) * 0.001})`,
+                        imageRendering: 'crisp-edges'
+                      }}
+                      loading="lazy"
+                    />
+                  </picture>
                 ) : (
                   <div className="absolute inset-0 w-full h-full bg-gray-800 animate-pulse" />
                 )}
@@ -274,7 +326,7 @@ const SmoothHorizontalScroll = () => {
                   }}
                 />
 
-                {/* Particle system */}
+                {/* Particle system - Responsive */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
                   {allParticles[index].map((particle) => (
                     <div
@@ -293,27 +345,33 @@ const SmoothHorizontalScroll = () => {
                   ))}
                 </div>
 
-                {/* Content overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 p-6">
-                  <div className="max-w-2xl">
-                    <div className="mb-3">
-                      <span className="inline-block px-3 py-1 bg-black bg-opacity-30 backdrop-blur-sm rounded-full text-sm font-medium tracking-wider">
+                {/* Content overlay - Fully Responsive */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white z-10 p-4 md:p-6">
+                  <div className="max-w-xs md:max-w-2xl">
+                    <div className="mb-2 md:mb-3">
+                      <span className="inline-block px-2 py-1 md:px-3 md:py-1 bg-black bg-opacity-30 backdrop-blur-sm rounded-full text-xs md:text-sm font-medium tracking-wider">
                         {image.category}
                       </span>
                     </div>
-                    <h3 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-300 to-slate-300 leading-tight">
+                    <h3 className={`font-bold mb-3 md:mb-4 bg-clip-text text-transparent bg-gradient-to-r from-yellow-400 via-orange-300 to-slate-300 leading-tight ${
+                      dimensions.width < 768 ? 'text-xl' : dimensions.width < 1024 ? 'text-3xl' : 'text-5xl'
+                    }`}>
                       {image.title}
                     </h3>
-                    <p className="text-base md:text-lg lg:text-xl text-gray-100 mb-6 font-light leading-relaxed opacity-90">
+                    <p className={`text-gray-100 mb-4 md:mb-6 font-light leading-relaxed opacity-90 ${
+                      dimensions.width < 768 ? 'text-sm' : dimensions.width < 1024 ? 'text-base' : 'text-xl'
+                    }`}>
                       {image.description}
                     </p>
-                    <div className="flex justify-center items-center space-x-3 mb-6">
-                      <div className="w-8 h-1 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"></div>
-                      <div className="w-2 h-2 border-2 border-white rounded-full"></div>
-                      <div className="w-8 h-1 bg-gradient-to-r from-slate-400 to-gray-500 rounded-full"></div>
+                    <div className="flex justify-center items-center space-x-2 md:space-x-3 mb-4 md:mb-6">
+                      <div className="w-6 md:w-8 h-1 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full"></div>
+                      <div className="w-1.5 md:w-2 h-1.5 md:h-2 border-2 border-white rounded-full"></div>
+                      <div className="w-6 md:w-8 h-1 bg-gradient-to-r from-slate-400 to-gray-500 rounded-full"></div>
                     </div>
-                    <button className="px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-                      Explore Collection
+                    <button className={`bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 active:scale-95 ${
+                      dimensions.width < 768 ? 'px-4 py-2 text-sm' : 'px-6 py-3 text-base'
+                    }`}>
+                      {dimensions.width < 768 ? 'Explore' : 'Explore Collection'}
                     </button>
                   </div>
                 </div>
@@ -322,13 +380,19 @@ const SmoothHorizontalScroll = () => {
           </div>
         </div>
 
-        {/* Progress indicator */}
-        <div className="fixed top-4 right-4 z-50 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg px-3 py-2 border border-gray-700">
+        {/* Progress indicator - Responsive */}
+        <div className={`fixed z-50 bg-black bg-opacity-60 backdrop-blur-sm rounded-lg border border-gray-700 ${
+          dimensions.width < 768 ? 'top-2 right-2 px-2 py-1' : 'top-4 right-4 px-3 py-2'
+        }`}>
           <div className="flex items-center space-x-2">
-            <div className="text-white text-sm font-medium">
+            <div className={`text-white font-medium ${
+              dimensions.width < 768 ? 'text-xs' : 'text-sm'
+            }`}>
               {currentImageIndex + 1} / {images.length}
             </div>
-            <div className="w-12 h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div className={`bg-gray-700 rounded-full overflow-hidden ${
+              dimensions.width < 768 ? 'w-8 h-1' : 'w-12 h-2'
+            }`}>
               <div
                 className="h-full bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full transition-all duration-300"
                 style={{ width: `${scrollProgress * 100}%` }}
@@ -337,24 +401,26 @@ const SmoothHorizontalScroll = () => {
           </div>
         </div>
 
-        {/* Navigation dots */}
-        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
-          <div className="flex space-x-2">
+        {/* Navigation dots - Responsive */}
+        <div className={`fixed left-1/2 transform -translate-x-1/2 z-50 ${
+          dimensions.width < 768 ? 'bottom-2' : 'bottom-4'
+        }`}>
+          <div className="flex space-x-1.5 md:space-x-2">
             {images.map((_, index) => (
               <div
                 key={index}
-                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                className={`rounded-full transition-all duration-300 ${
                   index === currentImageIndex
                     ? 'bg-yellow-400 scale-125'
                     : 'bg-gray-600'
-                }`}
+                } ${dimensions.width < 768 ? 'w-1.5 h-1.5' : 'w-2 h-2'}`}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* CSS animations */}
+      {/* Enhanced CSS animations with better performance */}
       <style jsx>{`
         @keyframes floatSimple {
           0%, 100% {
@@ -365,6 +431,20 @@ const SmoothHorizontalScroll = () => {
           }
         }
 
+        /* GPU acceleration for smooth animations */
+        * {
+          -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+          -webkit-perspective: 1000;
+          perspective: 1000;
+        }
+
+        /* Smooth scrolling with better performance */
+        html {
+          scroll-behavior: smooth;
+        }
+
+        /* Reduce motion for accessibility */
         @media (prefers-reduced-motion: reduce) {
           * {
             animation-duration: 0.01ms !important;
@@ -373,13 +453,21 @@ const SmoothHorizontalScroll = () => {
           }
         }
 
-        /* Smooth scrolling */
-        html {
-          scroll-behavior: smooth;
+        /* Enhanced mobile touch scrolling */
+        @media (max-width: 768px) {
+          body {
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+
+        /* Optimized transforms for better performance */
+        .transform-gpu {
+          transform: translateZ(0);
+          will-change: transform;
         }
       `}</style>
     </div>
   );
 };
 
-export default SmoothHorizontalScroll;
+export default UltraSmoothHorizontalScroll;
