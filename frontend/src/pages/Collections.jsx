@@ -209,7 +209,7 @@ const RarityBadge = ({ rarity }) => {
   );
 };
 
-const App = () => {
+const Collections = () => {
   const component = useRef(null);
   const itemsRef = useRef([]);
   const [activeItem, setActiveItem] = useState(null);
@@ -546,4 +546,4 @@ const App = () => {
   );
 };
 
-export default App;
+export default Collections;
